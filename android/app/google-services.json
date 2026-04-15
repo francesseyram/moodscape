@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "963972220755",
+    "project_id": "moodscape-bf678",
+    "storage_bucket": "moodscape-bf678.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963972220755:android:e348efe218f20a837b83a6",
+        "android_client_info": {
+          "package_name": "com.example.moodscape"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4XVDHElLsNnnLw69Q9MwodCjfpOj4AoQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
