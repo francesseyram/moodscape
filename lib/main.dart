@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
 import 'app.dart';
+import 'data/services/notification_service.dart';
+import 'data/services/accelerometer_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +19,12 @@ void main() async {
   await Hive.openBox('moodLogs');
   await Hive.openBox('journalEntries');
   await Hive.openBox('userPrefs');
+
+  // Notifications
+  await NotificationService.init();
+
+  // Accelerometer inactivity detection
+  AccelerometerService.start();
 
   runApp(const ProviderScope(child: MoodScapeApp()));
 }

@@ -7,6 +7,14 @@ environment:
   sdk: ^3.10.7
 
 dependencies:
+
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.0
+
+  # Speech & Storage
+  speech_to_text: ^7.0.0
+  geocoding: ^3.0.0
+
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
@@ -63,6 +71,7 @@ dev_dependencies:
   hive_generator: ^2.0.1
   build_runner: ^2.4.12
   flutter_native_splash: ^2.4.1
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -72,6 +81,25 @@ flutter:
     - assets/audio/
     - assets/lottie/
 
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFF8F9"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+
+flutter_native_splash:
+  color: "#FCE4EC"
+  image: assets/images/app_icon.png
+  android: true
+  ios: true
+  fullscreen: true
+  image_android: assets/images/app_icon.png
+  android_12:
+    image: assets/images/app_icon.png
+    color: "#FCE4EC"
+    icon_background_color: "#FCE4EC"
 # ── Splash Screen Config 
 #flutter_native_splash:
   #color: "#FFF8F9"

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/theme/app_theme.dart';
 import 'login_screen.dart';
+import '../../mood/screens/home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,17 +38,50 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate to login after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    // Check auth state after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () async {
+      if (!mounted) return;
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null) {
+        // Already logged in → go home
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const LoginScreen(),
+            pageBuilder: (_, __, ___) => const HomeScreen(),
             transitionsBuilder: (_, animation, __, child) =>
                 FadeTransition(opacity: animation, child: child),
             transitionDuration: const Duration(milliseconds: 600),
           ),
         );
+      } else {
+        // Check if first time
+        final prefs = await SharedPreferences.getInstance();
+        final seenOnboarding = prefs.getBool('seenOnboarding') ?? false;
+
+        if (!seenOnboarding) {
+          await prefs.setBool('seenOnboarding', true);
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const OnboardingScreen(),
+                transitionsBuilder: (_, animation, __, child) =>
+                    FadeTransition(opacity: animation, child: child),
+                transitionDuration: const Duration(milliseconds: 600),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const LoginScreen(),
+                transitionsBuilder: (_, animation, __, child) =>
+                    FadeTransition(opacity: animation, child: child),
+                transitionDuration: const Duration(milliseconds: 600),
+              ),
+            );
+          }
+        }
       }
     });
   }
@@ -78,7 +115,6 @@ class _SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo circle
                   Container(
                     width: 120,
                     height: 120,
@@ -94,15 +130,10 @@ class _SplashScreenState extends State<SplashScreen>
                       ],
                     ),
                     child: const Center(
-                      child: Text(
-                        '🌸',
-                        style: TextStyle(fontSize: 56),
-                      ),
+                      child: Text('🌸', style: TextStyle(fontSize: 56)),
                     ),
                   ),
                   const SizedBox(height: 28),
-
-                  // App name
                   Text(
                     'MoodScape',
                     style: GoogleFonts.poppins(
@@ -113,8 +144,6 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Tagline
                   Text(
                     'Your mood, your music, your space 🎵',
                     style: GoogleFonts.poppins(
@@ -124,8 +153,6 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                   const SizedBox(height: 60),
-
-                  // Loading indicator
                   SizedBox(
                     width: 36,
                     height: 36,

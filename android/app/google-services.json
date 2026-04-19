@@ -12,7 +12,20 @@
           "package_name": "com.example.moodscape"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "963972220755-fra10lbjq1bmvqm9ofpl7jelkal1ir76.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.moodscape",
+            "certificate_hash": "e30905e65d076bc87dec759f24c0250dfba89872"
+          }
+        },
+        {
+          "client_id": "963972220755-842kjk23192bgmemlv1d002j9nc739n4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC4XVDHElLsNnnLw69Q9MwodCjfpOj4AoQ"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963972220755-842kjk23192bgmemlv1d002j9nc739n4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963972220755-fiqa8lsnsspok50ffo4a7muq6ddsl5sb.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.moodscape"
+              }
+            }
+          ]
         }
       }
     }

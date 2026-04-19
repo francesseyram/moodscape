@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/mood_model.dart';
+import '../../../data/models/track_model.dart';
+import '../../../data/services/mood_service.dart';
 
 class PlayerScreen extends StatefulWidget {
-  final String mood;
+  final MoodModel mood;
   const PlayerScreen({super.key, required this.mood});
 
   @override
@@ -15,33 +18,13 @@ class _PlayerScreenState extends State<PlayerScreen>
     with SingleTickerProviderStateMixin {
   final AudioPlayer _player = AudioPlayer();
   late AnimationController _rotationController;
-  bool _isPlaying = false;
-
-  // Mood-based sample tracks (YouTube Audio Library free tracks)
-  final Map<String, List<Map<String, String>>> _moodTracks = {
-    'Happy': [
-      {'title': 'Sunny Day', 'artist': 'MoodScape Radio'},
-      {'title': 'Feel Good Vibes', 'artist': 'MoodScape Radio'},
-    ],
-    'Sad': [
-      {'title': 'Gentle Rain', 'artist': 'MoodScape Radio'},
-      {'title': 'Blue Hour', 'artist': 'MoodScape Radio'},
-    ],
-    'Calm': [
-      {'title': 'Still Waters', 'artist': 'MoodScape Radio'},
-      {'title': 'Peaceful Mind', 'artist': 'MoodScape Radio'},
-    ],
-    'Angry': [
-      {'title': 'Release', 'artist': 'MoodScape Radio'},
-      {'title': 'Power Through', 'artist': 'MoodScape Radio'},
-    ],
-    'Nutcracker': [
-      {'title': 'Dance of the Sugar Plum', 'artist': 'Tchaikovsky'},
-      {'title': 'March', 'artist': 'Tchaikovsky'},
-    ],
-  };
-
+  List<TrackModel> _tracks = [];
   int _currentTrackIndex = 0;
+  bool _isLoading = true;
+  bool _isBuffering = false;
+  String _quote = '';
+  Duration _duration = Duration.zero;
+  Duration _position = Duration.zero;
 
   @override
   void initState() {
@@ -49,65 +32,119 @@ class _PlayerScreenState extends State<PlayerScreen>
     _rotationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 6),
-    )..repeat();
-    _rotationController.stop();
+    );
+    _setupPlayerListeners();
+    _loadData();
+  }
+
+  void _setupPlayerListeners() {
+    _player.playingStream.listen((playing) {
+      if (!mounted) return;
+      if (playing) {
+        _rotationController.repeat();
+      } else {
+        _rotationController.stop();
+      }
+      setState(() {});
+    });
+
+    _player.durationStream.listen((duration) {
+      if (mounted) setState(() => _duration = duration ?? Duration.zero);
+    });
+
+    _player.positionStream.listen((position) {
+      if (mounted) setState(() => _position = position);
+    });
+
+    _player.processingStateStream.listen((state) {
+      if (!mounted) return;
+      setState(() => _isBuffering =
+          state == ProcessingState.buffering ||
+          state == ProcessingState.loading);
+      if (state == ProcessingState.completed) _nextTrack();
+    });
+  }
+
+  Future<void> _loadData() async {
+    final tracks = await MoodService.getTracksForMood(widget.mood.id);
+    final quote = await MoodService.getQuoteForMood(widget.mood.id);
+    print('🎵 Loaded ${tracks.length} tracks for ${widget.mood.id}');
+    for (final t in tracks) {
+      print('   → ${t.title} | URL: ${t.storageUrl}');
+    }
+    if (mounted) {
+      setState(() {
+        _tracks = tracks;
+        _quote = quote;
+        _isLoading = false;
+      });
+      if (tracks.isNotEmpty) await _loadTrack(0);
+    }
+  }
+
+  Future<void> _loadTrack(int index) async {
+    final track = _tracks[index];
+    if (track.storageUrl.isEmpty) {
+      print('❌ storageUrl is empty for: ${track.title}');
+      return;
+    }
+    print('🎵 Loading: ${track.storageUrl}');
+    try {
+      await _player.setUrl(track.storageUrl);
+      print('✅ Track loaded!');
+    } catch (e) {
+      print('❌ Error loading track: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load: ${track.title}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _togglePlayPause() async {
+    if (_player.playing) {
+      await _player.pause();
+    } else {
+      await _player.play();
+    }
+  }
+
+  Future<void> _nextTrack() async {
+    if (_tracks.isEmpty) return;
+    final next = (_currentTrackIndex + 1) % _tracks.length;
+    setState(() => _currentTrackIndex = next);
+    await _loadTrack(next);
+    await _player.play();
+  }
+
+  Future<void> _prevTrack() async {
+    if (_tracks.isEmpty) return;
+    final prev = (_currentTrackIndex - 1 + _tracks.length) % _tracks.length;
+    setState(() => _currentTrackIndex = prev);
+    await _loadTrack(prev);
+    await _player.play();
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   @override
   void dispose() {
+    _player.stop();
     _player.dispose();
     _rotationController.dispose();
     super.dispose();
   }
 
-  void _togglePlayPause() {
-    setState(() => _isPlaying = !_isPlaying);
-    if (_isPlaying) {
-      _rotationController.repeat();
-    } else {
-      _rotationController.stop();
-    }
-  }
-
-  void _nextTrack() {
-    final tracks = _moodTracks[widget.mood] ?? [];
-    setState(() {
-      _currentTrackIndex = (_currentTrackIndex + 1) % tracks.length;
-    });
-  }
-
-  void _prevTrack() {
-    final tracks = _moodTracks[widget.mood] ?? [];
-    setState(() {
-      _currentTrackIndex =
-          (_currentTrackIndex - 1 + tracks.length) % tracks.length;
-    });
-  }
-
-  Map<String, Color> get _moodColors => {
-        'Happy': const Color(0xFFFFD54F),
-        'Sad': const Color(0xFF90CAF9),
-        'Calm': const Color(0xFFA5D6A7),
-        'Angry': const Color(0xFFEF9A9A),
-        'Nutcracker': const Color(0xFFCE93D8),
-      };
-
-  Map<String, String> get _moodEmojis => {
-        'Happy': '😊',
-        'Sad': '😢',
-        'Calm': '😌',
-        'Angry': '😤',
-        'Nutcracker': '🎄',
-      };
-
   @override
   Widget build(BuildContext context) {
-    final tracks = _moodTracks[widget.mood] ?? [];
-    final currentTrack = tracks.isNotEmpty
-        ? tracks[_currentTrackIndex]
-        : {'title': 'No Track', 'artist': ''};
-    final moodColor = _moodColors[widget.mood] ?? AppColors.accent;
-    final moodEmoji = _moodEmojis[widget.mood] ?? '🎵';
+    final currentTrack =
+        _tracks.isNotEmpty ? _tracks[_currentTrackIndex] : null;
+    final isPlaying = _player.playing;
 
     return Scaffold(
       body: Container(
@@ -116,7 +153,7 @@ class _PlayerScreenState extends State<PlayerScreen>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              moodColor.withOpacity(0.4),
+              widget.mood.color.withOpacity(0.4),
               AppColors.background,
             ],
           ),
@@ -126,16 +163,21 @@ class _PlayerScreenState extends State<PlayerScreen>
             children: [
               // App bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, color: AppColors.primary),
-                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_ios,
+                          color: AppColors.primary),
+                      onPressed: () {
+                        _player.stop();
+                        Navigator.pop(context);
+                      },
                     ),
                     Expanded(
                       child: Text(
-                        '${widget.mood} Mood',
+                        '${widget.mood.emoji} ${widget.mood.label} Mood',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.poppins(
                             fontSize: 18,
@@ -148,7 +190,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
 
               // Album art
               AnimatedBuilder(
@@ -162,43 +204,68 @@ class _PlayerScreenState extends State<PlayerScreen>
                   height: 220,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: moodColor.withOpacity(0.3),
-                    border: Border.all(color: moodColor, width: 4),
+                    color: widget.mood.color.withOpacity(0.3),
+                    border:
+                        Border.all(color: widget.mood.color, width: 4),
                     boxShadow: [
                       BoxShadow(
-                        color: moodColor.withOpacity(0.4),
+                        color: widget.mood.color.withOpacity(0.4),
                         blurRadius: 40,
                         spreadRadius: 10,
                       ),
                     ],
                   ),
                   child: Center(
-                    child: Text(moodEmoji,
+                    child: Text(widget.mood.emoji,
                         style: const TextStyle(fontSize: 80)),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: 24),
+
+              // Quote
+              if (_quote.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    '"$_quote"',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: AppColors.textMedium,
+                        fontStyle: FontStyle.italic),
+                  ),
+                ),
+
+              const SizedBox(height: 24),
 
               // Track info
-              Text(
-                currentTrack['title'] ?? '',
-                style: GoogleFonts.poppins(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                currentTrack['artist'] ?? '',
-                style: GoogleFonts.poppins(
-                    fontSize: 14, color: AppColors.textMedium),
-              ),
+              _isLoading
+                  ? const CircularProgressIndicator(
+                      color: AppColors.primary)
+                  : Column(
+                      children: [
+                        Text(
+                          currentTrack?.title ?? 'No tracks available',
+                          style: GoogleFonts.poppins(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textDark),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          currentTrack?.artist ?? '',
+                          style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              color: AppColors.textMedium),
+                        ),
+                      ],
+                    ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
 
-              // Progress bar (visual only)
+              // Progress bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Column(
@@ -206,23 +273,40 @@ class _PlayerScreenState extends State<PlayerScreen>
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
                         activeTrackColor: AppColors.primary,
-                        inactiveTrackColor: AppColors.accent.withOpacity(0.3),
+                        inactiveTrackColor:
+                            AppColors.accent.withOpacity(0.3),
                         thumbColor: AppColors.primary,
                         trackHeight: 4,
                       ),
-                      child: Slider(value: 0.3, onChanged: (_) {}),
+                      child: Slider(
+                        value: _duration.inSeconds > 0
+                            ? (_position.inSeconds /
+                                    _duration.inSeconds)
+                                .clamp(0.0, 1.0)
+                            : 0.0,
+                        onChanged: (value) {
+                          final newPos = Duration(
+                              seconds:
+                                  (value * _duration.inSeconds).round());
+                          _player.seek(newPos);
+                        },
+                      ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('1:02',
+                          Text(_formatDuration(_position),
                               style: GoogleFonts.poppins(
-                                  fontSize: 12, color: AppColors.textMedium)),
-                          Text('3:24',
+                                  fontSize: 12,
+                                  color: AppColors.textMedium)),
+                          Text(_formatDuration(_duration),
                               style: GoogleFonts.poppins(
-                                  fontSize: 12, color: AppColors.textMedium)),
+                                  fontSize: 12,
+                                  color: AppColors.textMedium)),
                         ],
                       ),
                     ),
@@ -230,7 +314,7 @@ class _PlayerScreenState extends State<PlayerScreen>
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // Controls
               Row(
@@ -259,11 +343,19 @@ class _PlayerScreenState extends State<PlayerScreen>
                           ),
                         ],
                       ),
-                      child: Icon(
-                        _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 40,
-                      ),
+                      child: _isBuffering
+                          ? const Padding(
+                              padding: EdgeInsets.all(20),
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 3),
+                            )
+                          : Icon(
+                              isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 40,
+                            ),
                     ),
                   ),
                   const SizedBox(width: 16),
