@@ -17,15 +17,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _nameController = TextEditingController();
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _nameController.dispose();
     super.dispose();
   }
@@ -51,11 +54,9 @@ class _LoginScreenState extends State<LoginScreen> {
           password: _passwordController.text.trim(),
         );
 
-        // Update display name
         await userCredential.user
             ?.updateDisplayName(_nameController.text.trim());
 
-        // Save user to Firestore
         await FirebaseFirestore.instance
             .collection('users')
             .doc(userCredential.user!.uid)
@@ -100,7 +101,6 @@ class _LoginScreenState extends State<LoginScreen> {
           await FirebaseAuth.instance.signInWithCredential(credential);
       final user = userCredential.user;
 
-      // Save to Firestore only on first sign-in
       if (user != null) {
         final doc = await FirebaseFirestore.instance
             .collection('users')
@@ -155,8 +155,8 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 28, vertical: 32),
             child: Form(
               key: _formKey,
               child: Column(
@@ -164,7 +164,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const SizedBox(height: 20),
                   const Center(
-                    child: Text('🌸', style: TextStyle(fontSize: 56)),
+                    child:
+                        Text('🌸', style: TextStyle(fontSize: 56)),
                   ),
                   const SizedBox(height: 20),
                   Center(
@@ -191,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Name field — only shown on sign up
+                  // Name field — sign up only
                   if (!_isLogin) ...[
                     TextFormField(
                       controller: _nameController,
@@ -238,15 +239,52 @@ class _LoginScreenState extends State<LoginScreen> {
                               : Icons.visibility,
                           color: AppColors.primary,
                         ),
-                        onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                        onPressed: () => setState(() =>
+                            _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     validator: (v) => v == null || v.length < 6
                         ? 'Minimum 6 characters'
                         : null,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
+
+                  // Confirm Password — sign up only
+                  if (!_isLogin) ...[
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm Password',
+                        prefixIcon: const Icon(
+                            Icons.lock_outline,
+                            color: AppColors.primary),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: AppColors.primary,
+                          ),
+                          onPressed: () => setState(() =>
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword),
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Please confirm your password';
+                        }
+                        if (v != _passwordController.text) {
+                          return 'Passwords do not match';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  const SizedBox(height: 12),
 
                   // Login / Sign up button
                   _isLoading
@@ -255,7 +293,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: AppColors.primary))
                       : ElevatedButton(
                           onPressed: _handleEmailAuth,
-                          child: Text(_isLogin ? 'Log In' : 'Sign Up'),
+                          child:
+                              Text(_isLogin ? 'Log In' : 'Sign Up'),
                         ),
                   const SizedBox(height: 16),
 
@@ -264,8 +303,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Expanded(child: Divider()),
                       Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12),
                         child: Text('or',
                             style: GoogleFonts.poppins(
                                 color: AppColors.textMedium)),
@@ -277,18 +316,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Google sign in
                   OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _handleGoogleSignIn,
+                    onPressed:
+                        _isLoading ? null : _handleGoogleSignIn,
                     icon: const Text('G',
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: AppColors.primary)),
                     label: Text('Continue with Google',
-                        style:
-                            GoogleFonts.poppins(color: AppColors.primary)),
+                        style: GoogleFonts.poppins(
+                            color: AppColors.primary)),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 54),
-                      side: const BorderSide(color: AppColors.primary),
+                      side:
+                          const BorderSide(color: AppColors.primary),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16)),
                     ),

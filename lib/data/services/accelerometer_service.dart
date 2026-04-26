@@ -11,7 +11,7 @@ class AccelerometerService {
   // Threshold for detecting movement (adjust if too sensitive)
   static const double _movementThreshold = 1.5;
 
-  static const Duration _inactivityDuration = Duration(minutes: 300);
+  static const Duration _inactivityDuration = Duration(minutes: 30);
 
   static void start() {
     _lastMovementTime = DateTime.now();
@@ -39,7 +39,7 @@ class AccelerometerService {
 
   static void _startInactivityTimer() {
     _inactivityTimer = Timer.periodic(
-      const Duration(minutes: 60), 
+      const Duration(minutes: 5), 
       (_) => _checkInactivity(),
     );
   }
