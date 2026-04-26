@@ -15,7 +15,7 @@ class MoodService {
 
     final moods = snapshot.docs
         .map((doc) => MoodModel.fromFirestore(doc.id, doc.data()))
-        .where((m) => m.isActive)  // filter in Dart instead of Firestore
+        .where((m) => m.isActive)  
         .toList();
 
     final box = Hive.box('userPrefs');

@@ -85,15 +85,15 @@ class _PlayerScreenState extends State<PlayerScreen>
   Future<void> _loadTrack(int index) async {
     final track = _tracks[index];
     if (track.storageUrl.isEmpty) {
-      print('❌ storageUrl is empty for: ${track.title}');
+      print('storageUrl is empty for: ${track.title}');
       return;
     }
     print('🎵 Loading: ${track.storageUrl}');
     try {
       await _player.setUrl(track.storageUrl);
-      print('✅ Track loaded!');
+      print(' Track loaded!');
     } catch (e) {
-      print('❌ Error loading track: $e');
+      print(' Error loading track: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not load: ${track.title}')),
